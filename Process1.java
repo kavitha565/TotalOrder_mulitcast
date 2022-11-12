@@ -1,38 +1,25 @@
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class MaintainOrder1 {
-	public static final String processId = "P0";
-	public static final int processNum = 0;
-	public static int[] ports = {4444,5555,6666};
-	public static String[] events = {"a", "b", "c"};
-	private static final int NUM_PROCESSES = ports.length;
+public class Process1 {
+	public static final String processId = "P1";
+	public static final int processNum = 1;
+	public static int[] ports = {7654,8765,9876};
+	public static String[] events = {"event1","event2","event3"};
 	public static volatile ArrayList<Event> eventBuffer = new ArrayList<>();
 	public static volatile HashMap<String, HashSet<String>> acknowledgementBuffer = new HashMap<>();
 	private static int logicalTime = 0;
 	private static int applicationDeliveredEvents = 0;
 
 	public static Comparator<Event> compareEvents = (e1, e2)->{
-		if(e1.getLogicalTime() != e2.getLogicalTime()){
-			if(e1.getLogicalTime() > e2.getLogicalTime()){
-				return 1;
-			}
-		}else{
-			if(e1.getProcessNum() > e2.getProcessNum()){
-				return 1;
-			}
-		}
-
-		return -1;
+		return e1.getProcessNum() > e2.getProcessNum() ? 1: -1;
 	};
 
 	public static Thread createConnectionsThread  = (new Thread(){
@@ -60,7 +47,7 @@ public class MaintainOrder1 {
         }
     });
 
-	public Event createEvent(boolean acknowledgement,String eventId){
+	public static Event createEvent(boolean acknowledgement,String eventId){
 		Event event = new Event();
 		event.setEventAcked(acknowledgement);
 		event.setEventId(eventId);
@@ -85,14 +72,14 @@ public class MaintainOrder1 {
 			e.printStackTrace();
 		}
 		
-		Event event = createEvent(false,events[processNum]);
-		sendEvent(event);
+		Event event = createEvent(false,events[processNum-1]);
+		sendEventToProcess(event);
 
 	}
 
 	public static void manageConnections(){
 		try {
-			ServerSocket server_soc = new ServerSocket(ports[processNum]);
+			ServerSocket server_soc = new ServerSocket(ports[processNum-1]);
 			while(applicationDeliveredEvents != ports.length){
 				Socket soc = server_soc.accept();
 				ObjectInputStream ois = new ObjectInputStream(soc.getInputStream());
@@ -124,24 +111,18 @@ public class MaintainOrder1 {
 	}
 
 	public static void sendAcksForProcess(){
-		while(applicationDeliveredEvents != NUM_PROCESSES){
+		while(applicationDeliveredEvents != ports.length){
 			if(!eventBuffer.isEmpty()){
 				Event event = eventBuffer.get(0);
-				if(canWeSendAckToThisGuy(event)){
-					Event myEvent = new Event();
-					myEvent.setEventAcked(true);
-					myEvent.setEventId(event.getEventId());
-					myEvent.setLogicalTime(logicalTime);
-					myEvent.setProcessNum(processNum);
-					myEvent.setProcessId(processId);
-					sendEvent(myEvent);
-					
+				if(checkAcknowledgement(event)){
+					Event sendingEvent = createEvent(true,event.getEventId());
+                    sendEventToProcess(sendingEvent);
 					if(acknowledgementBuffer.containsKey(event.getEventId())){
 						acknowledgementBuffer.get(event.getEventId()).add(processId);
 					}else{
-						HashSet<String> sender_set = new HashSet<>();
-						sender_set.add(processId);
-						acknowledgementBuffer.put(event.getEventId(), sender_set);
+						HashSet<String> processDetails = new HashSet<>();
+						processDetails.add(processId);
+						acknowledgementBuffer.put(event.getEventId(), processDetails);
 					}
 				}
 			}
@@ -149,93 +130,75 @@ public class MaintainOrder1 {
 	}
 
 	public static void orderedDelivery(){
-		while(applicationDeliveredEvents != NUM_PROCESSES){
-			if(!eventBuffer.isEmpty()){
-				Event event = eventBuffer.get(0);
-				if(acknowledgementBuffer.containsKey(event.getEventId())){
-					if(acknowledgementBuffer.get(event.getEventId()).size() == NUM_PROCESSES){
-						deliverEvent(event);
+        while(applicationDeliveredEvents != ports.length){
+            if(!eventBuffer.isEmpty()){
+                Event event = eventBuffer.get(0);
+                if(acknowledgementBuffer.containsKey(event.getEventId())){
+					if(acknowledgementBuffer.get(event.getEventId()).size() == ports.length){
+						System.out.println(event.getProcessId() + ": " + event.getEventId());
+		                applicationDeliveredEvents += 1;
 						eventBuffer.remove(0);
 					}
 				}
-			}
-		}
+            }
+        }
 	}
 
-	public static void sendEvent(Event event){
-		try {
-			if(!event.isEventAcked()){
-				logicalTime += 1;
-			}
+	public static void sendEventToProcess(Event event){
+        try {
+			if(!event.isEventAcked()) logicalTime += 1;
 			event.setLogicalTime(logicalTime);
 			Socket socket;
-			ObjectOutputStream obj_op;
+			ObjectOutputStream oos;
 			for(int port : ports){
 				socket = new Socket("127.0.0.1",port);
-				obj_op = new ObjectOutputStream(socket.getOutputStream());
-				obj_op.writeObject(event);
+				oos = new ObjectOutputStream(socket.getOutputStream());
+				oos.writeObject(event);
 
-				obj_op.close();
+				// close socket and output stream
+				oos.close();
 				socket.close();
 			}
-
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
 
-	public static boolean canWeSendAckToThisGuy(Event event){
-		String myEvent = events[processNum];
-		if(!acknowledgementBuffer.isEmpty() && acknowledgementBuffer.containsKey(event.getEventId())){
-			if(acknowledgementBuffer.get(event.getEventId()).contains(MaintainOrder1.processId)){
-				return false;
-			}
-		}
-		if(event.getProcessNum() == processNum){
+	public static boolean checkAcknowledgement(Event event){
+		if(!acknowledgementBuffer.isEmpty() && acknowledgementBuffer.containsKey(event.getEventId()) && acknowledgementBuffer.get(event.getEventId()).contains(processId)){
+			return false;
+		} else if(event.getProcessNum() == processNum){
+			return true;
+		} else if(acknowledgementBuffer.containsKey(events[processNum-1]) && acknowledgementBuffer.get(events[processNum-1]).size() == ports.length){
+			return true;
+		} else if(logicalTime == event.getLogicalTime() && processNum > event.getProcessNum()) {
+			return true;
+		} else if(logicalTime > event.getLogicalTime()){
 			return true;
 		}
-		if(acknowledgementBuffer.containsKey(myEvent) && acknowledgementBuffer.get(myEvent).size() == NUM_PROCESSES){
-			return true;
-		}
-		if(logicalTime == event.getLogicalTime()){
-			if(processNum > event.getProcessNum()){
-				return true;
-			}
-		}else if(logicalTime > event.getLogicalTime()){
-			return true;
-		}
-
 		return false;
 	}
 
-	public static void deliverEvent(Event event){
-		System.out.println("Delivered: "+processId + ":" + event.getProcessId() + "." + event.getEventId());
-		applicationDeliveredEvents += 1;
-	}
-
 	public static void main(String[] args) {
-		MaintainOrder1 totalOrder = new MaintainOrder1();
+		Process1 totalOrder = new Process1();
 		totalOrder.init();
 
 		try {
-			if(MaintainOrder1.createConnectionsThread != null){
-				MaintainOrder1.createConnectionsThread.join();
+			if(Process1.createConnectionsThread != null){
+				Process1.createConnectionsThread.join();
 			}
-			if(MaintainOrder1.orderedDeliveryThread != null){
-				MaintainOrder1.orderedDeliveryThread.join();
+			if(Process1.orderedDeliveryThread != null){
+				Process1.orderedDeliveryThread.join();
 			}
-			if(MaintainOrder1.eventAcknowledgementThread != null){
-				MaintainOrder1.eventAcknowledgementThread.join();
+			if(Process1.eventAcknowledgementThread != null){
+				Process1.eventAcknowledgementThread.join();
 			}
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 		
-		System.out.println("Process "+MaintainOrder1.processId+" ended!");
+		System.out.println("Process "+Process1.processId+" ended!");
 
 	}
 

@@ -1,3 +1,3 @@
-start java MaintainOrder1
-start java MaintainOrder2
-start java MaintainOrder3
+start java Process1
+start java Process2
+start java Process3
