@@ -1,3 +1,3 @@
-xterm -e java Process1 &
-xterm -e java Process2 &
-xterm -e java Process3 &
+java Process1 &
+java Process2 &
+java Process3 &

@@ -59,7 +59,6 @@ public class Process1 {
 
 	public void init(){
 
-		System.out.println("Output of " + processId);
 
 		createConnectionsThread.start();
 		orderedDeliveryThread.start();
@@ -135,7 +134,7 @@ public class Process1 {
                 Event event = eventBuffer.get(0);
                 if(acknowledgementBuffer.containsKey(event.getEventId())){
 					if(acknowledgementBuffer.get(event.getEventId()).size() == ports.length){
-						System.out.println(event.getProcessId() + ": " + event.getEventId());
+						System.out.println("Output of " + processId + ": " + event.getProcessId() + ": " + event.getEventId());
 		                applicationDeliveredEvents += 1;
 						eventBuffer.remove(0);
 					}
@@ -197,9 +196,6 @@ public class Process1 {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		
-		System.out.println("Process "+Process1.processId+" ended!");
-
 	}
 
 }

@@ -59,7 +59,6 @@ public class Process3 {
 
 	public void init(){
 
-		System.out.println("Output of " + processId);
 
 		createConnectionsThread.start();
 		orderedDeliveryThread.start();
@@ -135,7 +134,7 @@ public static void orderedDelivery(){
 			Event event = eventBuffer.get(0);
 			if(acknowledgementBuffer.containsKey(event.getEventId())){
 				if(acknowledgementBuffer.get(event.getEventId()).size() == ports.length){
-					System.out.println(event.getProcessId() + ": " + event.getEventId());
+					System.out.println("Output of " + processId + ": " + event.getProcessId() + ": " + event.getEventId());
 					applicationDeliveredEvents += 1;
 					eventBuffer.remove(0);
 				}
@@ -179,11 +178,6 @@ public static boolean checkAcknowledgement(Event event){
 	return false;
 }
 
-	public static void deliverEvent(Event event){
-		System.out.println("Delivered: "+processId + ":" + event.getProcessId() + "." + event.getEventId());
-		applicationDeliveredEvents += 1;
-	}
-
 	public static void main(String[] args) {
 		Process3 totalOrder = new Process3();
 		totalOrder.init();
@@ -202,9 +196,6 @@ public static boolean checkAcknowledgement(Event event){
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		
-		System.out.println("Process "+Process3.processId+" ended!");
-
 	}
 
 }
