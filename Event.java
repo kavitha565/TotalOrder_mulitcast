@@ -1,15 +1,14 @@
 import java.util.Comparator;
 import java.io.Serializable;
 
-
-public class Event implements Serializable, Comparator<Event>{
+public class Event implements Serializable, Comparator<Event> {
 	long serialVersionUID = 42L;
 	int processNum;
 	String processId;
 	String eventId;
 	boolean eventAck = false;
 	int logicalTime;
-	
+
 	public int getProcessNum() {
 		return processNum;
 	}
@@ -21,12 +20,12 @@ public class Event implements Serializable, Comparator<Event>{
 	public String getProcessId() {
 		return processId;
 	}
-	
-    public void setProcessId(String processId) {
+
+	public void setProcessId(String processId) {
 		this.processId = processId;
 	}
 
-    public String getEventId() {
+	public String getEventId() {
 		return eventId;
 	}
 
@@ -37,6 +36,7 @@ public class Event implements Serializable, Comparator<Event>{
 	public boolean isEventAcked() {
 		return eventAck;
 	}
+
 	public void setEventAcked(boolean eventAck) {
 		this.eventAck = eventAck;
 	}
@@ -51,8 +51,7 @@ public class Event implements Serializable, Comparator<Event>{
 
 	@Override
 	public int compare(Event e1, Event e2) {
-		return e1.getProcessNum() > e2.getProcessNum() ? 1: -1;
+		return e1.getProcessNum() > e2.getProcessNum() ? 1 : -1;
 	}
-	
-	
+
 }
